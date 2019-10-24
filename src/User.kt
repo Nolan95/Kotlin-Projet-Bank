@@ -1,9 +1,9 @@
-open class User(val email: String,
-                val nom: String,
-                val prenom: String,
-                val telephone: String,
-                val password: String,
-                val username: String) {
+open class User(var email: String,
+                var nom: String,
+                var prenom: String,
+                var telephone: String,
+                var password: String,
+                var username: String) {
 
 
 }

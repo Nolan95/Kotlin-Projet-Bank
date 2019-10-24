@@ -2,6 +2,7 @@ package utils
 import Client
 import Gichetier
 import Compte
+import java.io.File
 import java.util.*
 
 val reader = Scanner(System.`in`)
@@ -18,8 +19,10 @@ fun Gichetier.verificationAcces(username: String?, password: String?) {
     }
 }
 
-fun checkPassword(password: String?, password_2: String?) =
-    if(password == password_2) true else throw Exception("Mauvais mot de passe")
+fun checkPassword(password: String?, password_2: String?) = password?.let{
+    if(it == password_2) true else throw Exception("Mauvais mot de passe")
+}
+
 
 
 fun List<Client>.verificationAcces(username: String?, password: String?) {
@@ -53,7 +56,7 @@ fun menuClient(){
     println("4. Effectuer un virement")
 }
 
-fun ajoutClient(): Client{
+fun ajoutClient(file: File, clients: MutableList<Client>) {
     print("Email client")
     val emailClient = readLine()!!
     print("Nom client")
@@ -61,17 +64,27 @@ fun ajoutClient(): Client{
     print("Prenom client")
     val prenomClient = readLine()!!
     print("Telephone au format xx xxx xx xx: ")
-    val telephone = readLine()!!
+    val telephoneClient = readLine()!!
     print("Nom d'utilisateur : ")
-    val username = readLine()!!
+    val usernameClient = readLine()!!
     print("Mot de passe : ")
-    val password = readLine()!!
+    val passwordClient = readLine()!!
     print("Saisir le numero de compte au format xxxx xxxx xxxx xxxx : ")
     val numero = readLine()!!
 
-    val client = Client(emailClient, nomClient,prenomClient,telephone, password, username, arrayOf(Compte(numero = numero)))
+    val client = Client().apply{
+        email = emailClient
+        nom = nomClient
+        prenom = prenomClient
+        telephone = telephoneClient
+        password = passwordClient
+        username = usernameClient
+        comptes.add(Compte(numero = numero))
+    }
 
-    return client
+    clients.add(client)
+    insertData(file, client)
+
 }
 
 fun listeDesClients(clients: List<Client>){
@@ -82,20 +95,16 @@ fun listeDesClients(clients: List<Client>){
 
 fun versementClient(clients: List<Client>){
     val client = identificationClient(clients)
-    if(client != null){
+    client?.let{
         print("Saisir numero de compte au format xxxx xxxx xxxx xxxx : ")
         val numeroCompte = readLine()
-        val compte: Compte? = client.comptes.find{it.numero == numeroCompte}
-        if(compte != null){
+        val compte: Compte? = it.comptes.find{it.numero == numeroCompte}
+        compte?.let{
             print("Saisir la somme à verser : ")
             val somme:Int = reader.nextInt()
-            compte.solde += somme
-            compte.historiques.add("Vous avez effectué un versement de ${somme}")
-        }else{
-            println("Ce numéro de compte n'existe pas")
+            it.solde += somme
+            it.historiques.add("Vous avez effectué un versement de ${somme}")
         }
-    }else{
-        println("Cet utilisateur n'existe pas")
     }
 }
 
@@ -103,30 +112,28 @@ fun versementClient(clients: List<Client>){
 fun virementClient(clients: List<Client>){
     println("Saisir les informations du client emetteur ")
     val client = identificationClient(clients)
-    if(client != null){
+    client?.let{
         println("Saisir les informations du client destinataire")
         val clientAVirer = identificationClient(clients)
         if(clientAVirer != null){
             print("Saisir le numero de compte : ")
             val numeroCompte = readLine()
-            val compte: Compte? = client.comptes.find{it.numero == numeroCompte}
-            if(compte != null){
+            val compte: Compte? = it.comptes.find{it.numero == numeroCompte}
+            compte?.let{
                 print("Saisir le montant à virer :  ")
                 val montant = reader.nextInt()
-                if(compte.solde > montant){
+                if(it.solde > montant){
                     print("Saisir le numero de compte du client vers qi virer : ")
                     val numeroCompteClientAvirer = readLine()
                     val compteClientAVirer = clientAVirer.comptes.find{it.numero == numeroCompteClientAvirer}
-                    if(compteClientAVirer != null) {
-                        compteClientAVirer.solde += montant
-                        compteClientAVirer.historiques.add("Vous avez recu un virement de ${montant}")
-                        compte.historiques.add("Vous avez effectué un viremet de ${montant} à ${clientAVirer.nom} ${clientAVirer.prenom}")
+                    compteClientAVirer?.run{
+                        this.solde += montant
+                        this.historiques.add("Vous avez recu un virement de ${montant}")
+                        it.historiques.add("Vous avez effectué un viremet de ${montant} à ${clientAVirer.nom} ${clientAVirer.prenom}")
                     }
                 }else{
                     throw Exception("Désolé votre solde est inférieur au montant à virer")
                 }
-            }else{
-                println("Ce compte n'existe pas")
             }
         }else{
             throw Exception("Cet utilisateur n'existe pas")
@@ -146,25 +153,23 @@ fun infoCompte(clients: List<Client>){
 
 fun affichageCompteClient(clients: List<Client>){
     val client = identificationClient(clients)
-    if(client != null){
-        for(compte in client.comptes){
+    client?.let{
+        for(compte in it.comptes){
             println("Numero : ${compte.numero}")
             println("Solde : ${compte.solde}")
         }
         println("\n")
-    }else{
-        println("Ce client n'existe pas !")
     }
 }
 
 
 fun operationRetrait(clients: List<Client>){
     val client = identificationClient(clients)
-    if(client != null){
+    client?.let{
         print("Saisir le numero de compte : ")
         val numeroCompte = readLine()
-        val compte: Compte? = client.comptes.find{it.numero == numeroCompte}
-        if(compte != null){
+        val compte: Compte? = it.comptes.find{it.numero == numeroCompte}
+        compte?.let{
             print("Saisir le montant à retirer :  ")
             val montant = reader.nextInt()
             if(compte.solde > montant){
@@ -173,61 +178,66 @@ fun operationRetrait(clients: List<Client>){
             }else{
                 throw Exception("Désolé votre solde est inférieur au montant à retirer")
             }
-        }else{
-            println("Ce compte n'existe pas")
         }
-    }else{
-        println("Cet utilisateur n'existe pas")
     }
 }
 
 
 fun affichageEtatCompte(clients: List<Client>){
     val client = identificationClient(clients)
-    if(client != null){
+    client?.run {
         print("Saisir le numero de compte : ")
         val numeroCompte = readLine()
-        val compte: Compte? = client.comptes.find{it.numero == numeroCompte}
-        if(compte != null){
-            println("L'etat de votre compte est : ${compte.etat}")
-        }else{
-            println("Ce compte n'existe pas")
+        val compte: Compte? = this.comptes.find { it.numero == numeroCompte }
+        compte?.run {
+            println("L'etat de votre compte est : ${this.etat}")
         }
-    }else{
-        println("Cet utilisateur n'existe pas")
+
     }
 }
 
 
 fun affichageHistoriqueClient(clients: List<Client>){
     val client = identificationClient(clients)
-    if(client != null){
-        for((numero, compte) in client.comptes.withIndex()){
-            println("Historique Compte ${numero+1}")
-            for(historique in compte.historiques){
+    client?.let {
+        for ((numero, compte) in it.comptes.withIndex()) {
+            println("Historique Compte ${numero + 1}")
+            for (historique in compte.historiques) {
                 println("${historique}")
             }
         }
         println("\n")
-    }else{
-        println("Ce client n'existe pas !")
+    }
+}
+
+
+fun insertData(file: File, client: Client){
+    file.printWriter().use { out ->
+        out.println("${client.email}")
     }
 }
 //Fonctions privées
+private fun printAll(client: Client) {
+
+}
 
 private fun affichageClient(client: Client){
-    println("Email : ${client.email}")
-    println("Nom : ${client.nom}")
-    println("Prenom : ${client.prenom}")
-    println("Telephone : ${client.telephone}")
-    println("Username : ${client.username}")
-    println("Nom : ${client.password}")
-    println("Les comptes clients")
-    for(compte in client.comptes){
-        println("Numero : ${compte.numero}")
-        println("Solde : ${compte.solde}")
+
+    with(client){
+        println("Email : ${this.email}")
+        println("Nom : ${this.nom}")
+        println("Prenom : ${this.prenom}")
+        println("Telephone : ${this.telephone}")
+        println("Username : ${this.username}")
+        println("Nom : ${this.password}")
+        println("Les comptes clients")
+        for(compte in this.comptes){
+            println("Numero : ${compte.numero}")
+            println("Solde : ${compte.solde}")
+        }
+        println()
     }
-    println("\n")
+
 }
 
 
